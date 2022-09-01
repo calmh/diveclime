@@ -1,18 +1,30 @@
 package main
 
-import "github.com/alecthomas/kong"
+import (
+	"fmt"
+	"os"
+
+	"github.com/alecthomas/kong"
+)
 
 var cli struct {
-	HOV  bool   `short:"h" long:"havochvatten" description:"Use havochvatten.se instead of viva.sjofartsverket.se"`
-	ViVa string `short:"v" long:"viva" description:"Station(s) to fetch data for" default:"flinten"`
+	HOV  bool     `short:"o" description:"Use havochvatten.se instead of viva.sjofartsverket.se"`
+	Viva []string `short:"v" description:"Station(s) to fetch data for" default:"flinten 7,malmö"`
 }
 
 func main() {
 	kong.Parse(&cli)
 
 	if cli.HOV {
-		havOchVatten()
-	} else {
-		viva(cli.ViVa)
+		if err := havOchVatten(); err != nil {
+			fmt.Println("Error:", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if err := viva(cli.Viva); err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
 	}
 }

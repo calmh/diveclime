@@ -1,4 +1,4 @@
-module github.com/calmh/diveclime
+module github.com/calmh/viva
 
 go 1.19
 

@@ -43,7 +43,7 @@ type vivaSamplesResponse struct {
 	} `json:"GetSingleStationResult"`
 }
 
-func viva(station string) error {
+func viva(pats []string) error {
 	const stationsURL = "https://services.viva.sjofartsverket.se:8080/output/vivaoutputservice.svc/vivastation/"
 	res, err := http.Get(stationsURL)
 	if err != nil {
@@ -56,7 +56,7 @@ func viva(station string) error {
 	}
 
 	for _, s := range stations.Result.Stations {
-		if strings.Contains(strings.ToLower(s.Name), station) {
+		if match(s.Name, pats) {
 			res, err := http.Get(stationsURL + strconv.Itoa(s.ID))
 			if err != nil {
 				return err
@@ -77,4 +77,14 @@ func viva(station string) error {
 	}
 
 	return nil
+}
+
+func match(s string, pats []string) bool {
+	for _, m := range pats {
+		m = strings.ToLower(m)
+		if strings.Contains(strings.ToLower(s), m) {
+			return true
+		}
+	}
+	return false
 }

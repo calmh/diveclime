@@ -13,14 +13,13 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func havOchVatten() {
+func havOchVatten() error {
 	var match *regexp.Regexp
 	var err error
 	if m := flag.Arg(0); m != "" {
 		match, err = regexp.Compile(m)
 		if err != nil {
-			fmt.Println("Matcher:", err)
-			os.Exit(1)
+			return fmt.Errorf("invalid regexp: %w", err)
 		}
 	}
 
@@ -42,8 +41,7 @@ func havOchVatten() {
 		}
 	})
 	if err := c.Visit("https://www.havochvatten.se/badplatser-och-badvatten/vattenprov-badtemperatur/vattentemperatur-och-kvalitet-pa-badvatten-pa-sydkusten.html"); err != nil {
-		fmt.Println("Visit:", err)
-		os.Exit(1)
+		return fmt.Errorf("visit: %w", err)
 	}
 
 	keys := make([]string, 0, len(temps))
@@ -61,4 +59,5 @@ func havOchVatten() {
 		fmt.Fprintf(tw, "%s\t%4.1f\t%s\n", key, temps[key], arrow)
 	}
 	tw.Flush()
+	return nil
 }
