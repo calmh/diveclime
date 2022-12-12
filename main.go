@@ -30,11 +30,13 @@ func main() {
 
 	if cli.PrometheusListen != "" {
 		go func() {
-			if err := vivaMetrics(cli.Viva); err != nil {
-				fmt.Println("Error:", err)
-				os.Exit(1)
+			for {
+				if err := vivaMetrics(cli.Viva); err != nil {
+					fmt.Println("Error:", err)
+					os.Exit(1)
+				}
+				time.Sleep(cli.PrometheusPollInterval)
 			}
-			time.Sleep(cli.PrometheusPollInterval)
 		}()
 		if err := http.ListenAndServe(cli.PrometheusListen, promhttp.Handler()); err != nil {
 			fmt.Println("Error:", err)

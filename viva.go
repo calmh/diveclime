@@ -114,22 +114,25 @@ func vivaMetrics(pats []string) error {
 		if match(station.Name, pats) {
 			res, err := http.Get(stationsURL + strconv.Itoa(station.ID))
 			if err != nil {
+				metrics.DeletePartialMatch(prometheus.Labels{"station": station.Name})
 				return err
 			}
 
 			var samples vivaSamplesResponse
 			if err := json.NewDecoder(res.Body).Decode(&samples); err != nil {
+				metrics.DeletePartialMatch(prometheus.Labels{"station": station.Name})
 				return err
 			}
 
-			metrics.WithLabelValues(station.Name, "Updated").Set(float64(time.Now().Unix()))
 			for _, sample := range samples.Result.Samples {
 				v, err := strconv.ParseFloat(sample.Value, 64)
 				if err != nil {
+					metrics.Delete(prometheus.Labels{"station": station.Name, "name": sample.Name})
 					continue
 				}
 				metrics.WithLabelValues(station.Name, sample.Name).Set(v)
 			}
+			metrics.WithLabelValues(station.Name, "Updated").Set(float64(time.Now().Unix()))
 		}
 	}
 
