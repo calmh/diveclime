@@ -6,6 +6,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type vivaStation struct {
@@ -22,7 +26,7 @@ type vivaStationsResponse struct {
 }
 
 type vivaSample struct {
-	Calmh               int
+	Calm                int
 	Heading             int
 	Msg                 string
 	Name                string
@@ -87,4 +91,47 @@ func match(s string, pats []string) bool {
 		}
 	}
 	return false
+}
+
+var metrics = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Namespace: "viva",
+	Name:      "station_metrics",
+}, []string{"station", "name"})
+
+func vivaMetrics(pats []string) error {
+	const stationsURL = "https://services.viva.sjofartsverket.se:8080/output/vivaoutputservice.svc/vivastation/"
+	res, err := http.Get(stationsURL)
+	if err != nil {
+		return err
+	}
+
+	var stations vivaStationsResponse
+	if err := json.NewDecoder(res.Body).Decode(&stations); err != nil {
+		return err
+	}
+
+	for _, station := range stations.Result.Stations {
+		if match(station.Name, pats) {
+			res, err := http.Get(stationsURL + strconv.Itoa(station.ID))
+			if err != nil {
+				return err
+			}
+
+			var samples vivaSamplesResponse
+			if err := json.NewDecoder(res.Body).Decode(&samples); err != nil {
+				return err
+			}
+
+			metrics.WithLabelValues(station.Name, "Updated").Set(float64(time.Now().Unix()))
+			for _, sample := range samples.Result.Samples {
+				v, err := strconv.ParseFloat(sample.Value, 64)
+				if err != nil {
+					continue
+				}
+				metrics.WithLabelValues(station.Name, sample.Name).Set(v)
+			}
+		}
+	}
+
+	return nil
 }
