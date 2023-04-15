@@ -11,4 +11,4 @@ EXPOSE 8080/tcp
 
 COPY --from=builder /src/viva /bin/viva
 
-ENTRYPOINT ["/bin/viva", "--prometheus-listen=:8080", "--viva=malm,flinten"]
+ENTRYPOINT ["/bin/viva", "--prometheus-listen=:8080"]
