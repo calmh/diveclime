@@ -6,6 +6,7 @@ require (
 	github.com/alecthomas/kong v0.6.1
 	github.com/gocolly/colly v1.2.0
 	github.com/prometheus/client_golang v1.14.0
+	golang.org/x/text v0.3.7
 )
 
 require (
@@ -28,7 +29,6 @@ require (
 	github.com/temoto/robotstxt v1.1.1 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
-	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
