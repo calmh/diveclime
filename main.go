@@ -12,9 +12,9 @@ import (
 
 var cli struct {
 	HOV                    bool          `short:"o" description:"Use havochvatten.se instead of viva.sjofartsverket.se"`
-	Viva                   []string      `short:"v" description:"Station(s) to fetch data for" default:"flinten 7,malmö"`
+	Viva                   []string      `short:"v" description:"Station(s) to fetch data for" default:""`
 	PrometheusListen       string        `short:"l" description:"Listen address for Prometheus metrics"`
-	PrometheusPollInterval time.Duration `short:"i" description:"Poll interval in seconds" default:"60s"`
+	PrometheusPollInterval time.Duration `short:"i" description:"Poll interval in seconds" default:"180s"`
 }
 
 func main() {

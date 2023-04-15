@@ -7,9 +7,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 type vivaStation struct {
@@ -84,6 +88,9 @@ func viva(pats []string) error {
 }
 
 func match(s string, pats []string) bool {
+	if len(pats) == 0 {
+		return true
+	}
 	for _, m := range pats {
 		m = strings.ToLower(m)
 		if strings.Contains(strings.ToLower(s), m) {
@@ -112,29 +119,72 @@ func vivaMetrics(pats []string) error {
 
 	for _, station := range stations.Result.Stations {
 		if match(station.Name, pats) {
+			stationName := sanitizeString(station.Name)
 			res, err := http.Get(stationsURL + strconv.Itoa(station.ID))
 			if err != nil {
-				metrics.DeletePartialMatch(prometheus.Labels{"station": station.Name})
+				metrics.DeletePartialMatch(prometheus.Labels{"station": stationName})
 				return err
 			}
 
 			var samples vivaSamplesResponse
 			if err := json.NewDecoder(res.Body).Decode(&samples); err != nil {
-				metrics.DeletePartialMatch(prometheus.Labels{"station": station.Name})
+				metrics.DeletePartialMatch(prometheus.Labels{"station": stationName})
 				return err
 			}
 
 			for _, sample := range samples.Result.Samples {
-				v, err := strconv.ParseFloat(sample.Value, 64)
+				sampleName := sanitizeString(sample.Name)
+				val := strings.TrimLeft(sample.Value, ">NOSV ")
+				v, err := strconv.ParseFloat(val, 64)
 				if err != nil {
-					metrics.Delete(prometheus.Labels{"station": station.Name, "name": sample.Name})
+					metrics.Delete(prometheus.Labels{"station": stationName, "name": sampleName})
 					continue
 				}
-				metrics.WithLabelValues(station.Name, sample.Name).Set(v)
+				metrics.WithLabelValues(stationName, sampleName).Set(v)
+
+				// See if the value was prefixed with a direction.
+				dir := -1
+				before, _, _ := strings.Cut(sample.Value, " ")
+				switch before {
+				case "N":
+					dir = 0
+				case "NO":
+					dir = 45
+				case "O":
+					dir = 90
+				case "SO":
+					dir = 135
+				case "S":
+					dir = 180
+				case "SV":
+					dir = 225
+				case "V":
+					dir = 270
+				case "NV":
+					dir = 315
+				}
+				if dir != -1 {
+					metrics.WithLabelValues(stationName, sampleName+" Riktning").Set(float64(dir))
+				}
 			}
-			metrics.WithLabelValues(station.Name, "Updated").Set(float64(time.Now().Unix()))
+			metrics.WithLabelValues(stationName, "Updated").Set(float64(time.Now().Unix()))
 		}
 	}
 
 	return nil
+}
+
+func sanitizeString(s string) string {
+	// Remove diacritics.
+	t := transform.Chain(
+		// Split runes with diacritics into base character and mark.
+		norm.NFD,
+		runes.Remove(runes.Predicate(func(r rune) bool {
+			return unicode.Is(unicode.Mn, r) || r > unicode.MaxASCII
+		})))
+	res, _, err := transform.String(t, s)
+	if err != nil {
+		return s
+	}
+	return res
 }
