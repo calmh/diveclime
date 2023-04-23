@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,6 +16,9 @@ import (
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 )
+
+//go:embed tzdata/Stockholm
+var stockholmData []byte
 
 type vivaStation struct {
 	ID   int
@@ -117,6 +121,14 @@ func vivaMetrics(pats []string) error {
 		return err
 	}
 
+	loc, err := time.LoadLocation("Europe/Stockholm")
+	if err != nil {
+		loc, err = time.LoadLocationFromTZData("Europe/Stockholm", stockholmData)
+	}
+	if err != nil {
+		loc = time.Local
+	}
+
 	for _, station := range stations.Result.Stations {
 		if match(station.Name, pats) {
 			stationName := sanitizeString(station.Name)
@@ -166,6 +178,12 @@ func vivaMetrics(pats []string) error {
 				if dir != -1 {
 					metrics.WithLabelValues(stationName, sampleName+" Riktning").Set(float64(dir))
 				}
+
+				if t, err := time.ParseInLocation("2006-01-02 15:04:05", sample.Updated, loc); err == nil {
+					metrics.WithLabelValues(stationName, sampleName+" Updated").Set(float64(t.Unix()))
+					continue
+				}
+
 			}
 			metrics.WithLabelValues(stationName, "Updated").Set(float64(time.Now().Unix()))
 		}
